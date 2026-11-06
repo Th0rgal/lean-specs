@@ -126,9 +126,11 @@ structure ObsQuotient (State Obs : Type) where
 def ObsQuotient.Equiv {State Obs : Type} (Q : ObsQuotient State Obs) (s₁ s₂ : State) : Prop :=
   Q.observe s₁ = Q.observe s₂
 
-@[simp]
-theorem ObsQuotient.equiv_refl {State Obs : Type} (Q : ObsQuotient State Obs) (s : State) :
-    Q.Equiv s s := rfl
+theorem ObsQuotient.equiv_of_eq {State Obs : Type} (Q : ObsQuotient State Obs) {s₁ s₂ : State}
+    (h : s₁ = s₂) :
+    Q.Equiv s₁ s₂ := by
+  subst h
+  rfl
 
 theorem ObsQuotient.equiv_symm {State Obs : Type} (Q : ObsQuotient State Obs) {s₁ s₂ : State}
     (h : Q.Equiv s₁ s₂) : Q.Equiv s₂ s₁ :=

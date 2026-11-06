@@ -55,11 +55,11 @@ def InvDependsOnlyOn {State Loc Val : Type} (S : StateSpace State Loc Val)
     (Inv : State → Prop) (fp : Footprint Loc) : Prop :=
   ∀ s s', AgreesOn S fp s s' → (Inv s ↔ Inv s')
 
-@[simp]
-theorem AgreesOn.refl {State Loc Val : Type} (S : StateSpace State Loc Val)
-    (fp : Footprint Loc) (s : State) :
-    AgreesOn S fp s s :=
-  fun _ _ => rfl
+theorem AgreesOn.of_eq {State Loc Val : Type} (S : StateSpace State Loc Val)
+    (fp : Footprint Loc) {s₁ s₂ : State} (h : s₁ = s₂) :
+    AgreesOn S fp s₁ s₂ := by
+  subst h
+  exact fun _ _ => rfl
 
 theorem AgreesOn.symm {State Loc Val : Type} {S : StateSpace State Loc Val}
     {fp : Footprint Loc} {s₁ s₂ : State} (h : AgreesOn S fp s₁ s₂) :
@@ -78,11 +78,11 @@ theorem agreesOn_empty {State Loc Val : Type} (S : StateSpace State Loc Val) (s 
   intro _ hl
   cases hl
 
-@[simp]
-theorem WritesOnly.refl {State Loc Val : Type} (S : StateSpace State Loc Val)
-    (fp : Footprint Loc) (s : State) :
-    WritesOnly S fp s s :=
-  fun _ _ => rfl
+theorem WritesOnly.of_eq {State Loc Val : Type} (S : StateSpace State Loc Val)
+    (fp : Footprint Loc) {s₁ s₂ : State} (h : s₁ = s₂) :
+    WritesOnly S fp s₁ s₂ := by
+  subst h
+  exact fun _ _ => rfl
 
 theorem WritesOnly.trans {State Loc Val : Type} {S : StateSpace State Loc Val}
     {fp : Footprint Loc} {s₁ s₂ s₃ : State}
