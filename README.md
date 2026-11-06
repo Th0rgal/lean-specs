@@ -1,5 +1,7 @@
 # `lean-specs` — Reusable 4-Layer Formal Specification Combinators for Lean 4
 
+> **Status: Archived / Retired (Via Negativa).** `lean-specs` is retired in favor of writing plain, idiomatic Lean 4 specifications directly inside downstream domain repositories—following the `formal-specs` methodology and auditing theorems directly with [`turbo-lean audit-spec`](https://github.com/Th0rgal/turbo-lean)—rather than coupling projects to a shared specification-combinator wrapper library. Existing modules, proofs, and commit history remain intact for historical provenance and reference.
+
 `Th0rgal/lean-specs` is a zero-dependency, zero-FFI Lean 4 library (`0 import Lean`, `0 sorryAx`, `0 native_decide`, compatible across Lean `v4.31.0..v4.35.0`) providing reusable specification combinators for human-auditable formal verification, composable protocol invariants, two-sided CVE regression subspecs, and machine-checked specification evolution.
 
 Every theorem in `LeanSpecs` is audited by [`Th0rgal/turbo-lean`](https://github.com/Th0rgal/turbo-lean) (`76/76 non_vacuous_and_tight`, `0` vacuous, `0` trivial, `0` droppable hypotheses).
