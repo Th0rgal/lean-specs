@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lean 4.35.0 + turbo-lean Audit (62/62 Tight Specs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache elan & Lake build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            .lake/build
+          key: lean-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json', 'LeanSpecs.lean', 'LeanSpecs/**/*.lean') }}
+          restore-keys: |
+            lean-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-
+
+      - name: Install elan and Lean 4.35.0 toolchain
+        run: |
+          if [ ! -x "$HOME/.elan/bin/lake" ]; then
+            curl --retry 5 --retry-all-errors -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          fi
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "$(tr -d '[:space:]' < lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Install & cache turbo-lean spec auditor
+        uses: Th0rgal/turbo-lean@3fea4a72fcd6d55cfe172c6b5a2651ad6dea1ef6
+        with:
+          project-dir: "."
+          command: cache-only
+
+      - name: Build, self-test, verify CAS shards, audit 62/62 tight specs & check TCB hygiene
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake build
+          ./.lake/build/bin/lean-specs-test
+          turbo-lean --json ci-verify --project-dir . | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['status']=='ci_verified' and d['zero_sorry'] and d['zero_native_decide'] and d['theorem_shards']>=62, d; print(f'ci-verify: {d[\"status\"]} ({d[\"theorem_shards\"]} theorem shards)')"
+          turbo-lean --json audit-spec LeanSpecs/Core.lean LeanSpecs/Composition.lean LeanSpecs/MetaSpec.lean LeanSpecs/Subspec.lean LeanSpecs/Examples.lean | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['ok'] and d['vacuous_specs']==0 and d['trivial_specs']==0 and d['tight_specs']>=62 and not d.get('warnings') and not d.get('horizontal_packing_warnings'), d; print(f'LeanSpecs: {d[\"tight_specs\"]}/{d[\"total_specs_audited\"]} non_vacuous_and_tight (0 warnings)')"
+          if nm -u .lake/build/bin/lean-specs-test | grep -E 'lean_elab|lean_environment|sqlite|SSL_'; then
+            echo "ERROR: Forbidden frontend/SQLite/OpenSSL symbol found in lean-specs-test!" >&2
+            exit 1
+          fi
+          if grep -rn '^import Lean\b' LeanSpecs.lean LeanSpecs/; then
+            echo "ERROR: Forbidden 'import Lean' found in LeanSpecs!" >&2
+            exit 1
+          fi
+          if grep -rn '^\s*sorry\b' LeanSpecs.lean LeanSpecs/; then
+            echo "ERROR: Forbidden 'sorry' found in LeanSpecs!" >&2
+            exit 1
+          fi
+
+  compat:
+    name: Toolchain Compatibility (${{ matrix.toolchain }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - leanprover/lean4:v4.31.0
+          - leanprover/lean4:v4.33.1
+          - leanprover/lean4:v4.34.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install elan and ${{ matrix.toolchain }}
+        run: |
+          if [ ! -x "$HOME/.elan/bin/elan" ]; then
+            curl --retry 5 --retry-all-errors -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          fi
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install "${{ matrix.toolchain }}"
+          elan run "${{ matrix.toolchain }}" lake build
+          ./.lake/build/bin/lean-specs-test
