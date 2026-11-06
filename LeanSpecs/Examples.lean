@@ -2,6 +2,7 @@ import LeanSpecs.Core
 import LeanSpecs.Composition
 import LeanSpecs.MetaSpec
 import LeanSpecs.Subspec
+import LeanSpecs.HashDomain
 
 namespace LeanSpecs.Examples
 
@@ -208,6 +209,49 @@ def debitFeeRelaxation :
     unfold feeDebitImpl at hExact
     simp at hExact
 
+def toyModHash (k : Nat) : Nat := k % 4
+
+def toyCollisionFreeSpec : MetaGateSpec (List Nat) (CollisionFreeOn toyModHash) where
+  gate keys := checkCollisionFreeOn toyModHash keys
+  sound keys h := (checkCollisionFreeOn_iff toyModHash keys).mp h
+  complete keys h := (checkCollisionFreeOn_iff toyModHash keys).mpr h
+  posWitness := [1, 2, 3]
+  negWitness := [1, 5]
+  nonVacuous := rfl
+  tight := rfl
+
+def extractNonZeroFlag (raw : Nat) : Bool := raw != 0
+
+def boolTruePolicyGate : MetaGateSpec Bool (fun b => b = true) where
+  gate b := b
+  sound _ h := h
+  complete _ h := h
+  posWitness := true
+  negWitness := false
+  nonVacuous := rfl
+  tight := rfl
+
+def demoRoutingGate : RoutingGateSpec Nat Bool extractNonZeroFlag (fun b => b = true) where
+  policyGate := boolTruePolicyGate
+  rawSafeWitness := 7
+  rawBadWitness := 0
+  raw_nonVacuous := rfl
+  raw_tight := rfl
+
+def extractLowByteNonZero (raw : Nat) : Bool := (raw % 256) != 0
+
+def spoofedRoutingGate : RoutingGateSpec Nat Bool extractLowByteNonZero (fun b => b = true) where
+  policyGate := boolTruePolicyGate
+  rawSafeWitness := 7
+  rawBadWitness := 0
+  raw_nonVacuous := rfl
+  raw_tight := rfl
+
+theorem spoofedRoutingGate_admits_high_bit_payload :
+    spoofedRoutingGate.eval 257 = true ∧ ¬ (257 < 256) :=
+  spoofedRoutingGate.extractor_spoof_breaks_raw_safety (fun raw => raw < 256) 257
+    (by decide) rfl
+
 end LeanSpecs.Examples
 
 def main : IO UInt32 := do
@@ -215,10 +259,29 @@ def main : IO UInt32 := do
   if !(g.gate g.posWitness && !g.gate g.negWitness) then
     IO.eprintln "FAIL: debitGateSpec witness check failed"
     return 1
+  let h := LeanSpecs.Examples.toyCollisionFreeSpec
+  if !(h.gate h.posWitness && !h.gate h.negWitness) then
+    IO.eprintln "FAIL: toyCollisionFreeSpec witness check failed"
+    return 1
+  for keys in [[], [1], [1, 1], [1, 2, 1], [1, 5], [5, 1], [0, 1, 4]] do
+    let oracle := keys.all fun x => keys.all fun y =>
+      x == y || LeanSpecs.Examples.toyModHash x != LeanSpecs.Examples.toyModHash y
+    if h.gate keys != oracle then
+      IO.eprintln s!"FAIL: hash checker differs from all-pairs oracle on {keys}"
+      return 1
+  let rg := LeanSpecs.Examples.demoRoutingGate
+  if !(rg.eval rg.rawSafeWitness && !rg.eval rg.rawBadWitness) then
+    IO.eprintln "FAIL: demoRoutingGate witness check failed"
+    return 1
+  let sg := LeanSpecs.Examples.spoofedRoutingGate
+  if !(sg.eval 257 && !(257 < 256)) then
+    IO.eprintln "FAIL: spoofedRoutingGate TCB demonstration failed"
+    return 1
   let r0 := LeanSpecs.Examples.refDebitImpl ⟨10, 25⟩
   let m0 := LeanSpecs.Examples.saturatingMutant ⟨10, 25⟩
   if !(r0 == none && m0 == some 0) then
     IO.eprintln "FAIL: CVE mutant separation check failed"
     return 1
-  IO.println "lean-specs self-test: MetaGateSpec, SpecBlock orthogonality, ObsQuotient, and CveSubspec checks passed"
+  IO.println ("lean-specs self-test: MetaGateSpec, HashDomain, RoutingGateSpec, " ++
+    "SpecBlock orthogonality, ObsQuotient, and CveSubspec checks passed")
   return 0

@@ -2,7 +2,7 @@
 
 `Th0rgal/lean-specs` is a zero-dependency, zero-FFI Lean 4 library (`0 import Lean`, `0 sorryAx`, `0 native_decide`, compatible across Lean `v4.31.0..v4.35.0`) providing reusable specification combinators for human-auditable formal verification, composable protocol invariants, two-sided CVE regression subspecs, and machine-checked specification evolution.
 
-Every theorem in `LeanSpecs` is audited by [`Th0rgal/turbo-lean`](https://github.com/Th0rgal/turbo-lean) (`62/62 non_vacuous_and_tight`, `0` vacuous, `0` trivial, `0` droppable hypotheses).
+Every theorem in `LeanSpecs` is audited by [`Th0rgal/turbo-lean`](https://github.com/Th0rgal/turbo-lean) (`76/76 non_vacuous_and_tight`, `0` vacuous, `0` trivial, `0` droppable hypotheses).
 
 ## 4-Layer Specification Architecture
 
@@ -21,6 +21,7 @@ Every theorem in `LeanSpecs` is audited by [`Th0rgal/turbo-lean`](https://github
 4. **Layer 4 — Meta-Specs & Speculative Gate Contracts (`LeanSpecs.MetaSpec`)**:
    - `MetaGateSpec` (sound + complete boolean decision procedure with positive and negative witnesses), `MetaAlgorithmSpec` (oracle equivalence + step bound), `JointSatisfiableSpec` (multi-clause inhabitance witness), `NonVacuousSpec`, `HypothesisMinimalWitness`, `FrameInvariant`, `ExactDeltaSpec`, `OutcomePartitionSpec`, `AccountingBoundarySpec`, `OrderIndependence`, `WitnessRefuter`, `MutantKillBundle`, `ClauseIndependenceWitness`.
    - Speculative verification & translation-validation combinators (`evalWithSpeculativeGate`, `speculativeGate_sound_eq`, `evalWithVerifiedTransform`, `verifiedTransform_refines`).
+   - Finite-footprint hash domain & TCB-explicit routing gates (`LeanSpecs.HashDomain`): `CollisionFreeOn` + `checkCollisionFreeOn` (`checkCollisionFreeOn_iff`), constructive finite pigeonhole impossibility proofs explaining why global non-injective compression cannot be asserted universally (`universal_fin2_footprint_forces_global_injective`, `no_global_injective_fin_succ`, `no_global_injective_fin_gt`, `no_global_pair_hash_injective`), and `RoutingGateSpec` exposing `extractInTcb : Raw → Flags` inside the trusted computing base (`eval_iff_extracted_policy`, `sound_for_raw_of_faithful_extractor`, `extractor_spoof_breaks_raw_safety`).
 
 ## Adding `lean-specs` to a Lake Project
 
@@ -46,7 +47,7 @@ rev = "main"
 lake build
 ./.lake/build/bin/lean-specs-test
 turbo-lean --json ci-verify --project-dir .
-turbo-lean --json audit-spec LeanSpecs/Core.lean LeanSpecs/Composition.lean LeanSpecs/MetaSpec.lean LeanSpecs/Subspec.lean LeanSpecs/Examples.lean
+turbo-lean --json audit-spec LeanSpecs/Core.lean LeanSpecs/Composition.lean LeanSpecs/MetaSpec.lean LeanSpecs/Subspec.lean LeanSpecs/HashDomain.lean LeanSpecs/Examples.lean
 ```
 
 ## License
