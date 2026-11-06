@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Lean 4.35.0 + turbo-lean Audit (62/62 Tight Specs)
+    name: Lean 4.35.0 + turbo-lean Audit (76/76 Tight Specs)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -43,14 +43,14 @@ jobs:
           project-dir: "."
           command: cache-only
 
-      - name: Build, self-test, verify CAS shards, audit 62/62 tight specs & check TCB hygiene
+      - name: Build, self-test, verify CAS shards, audit 76/76 tight specs & check TCB hygiene
         run: |
           set -euo pipefail
           export PATH="$HOME/.elan/bin:$PATH"
           lake build
           ./.lake/build/bin/lean-specs-test
-          turbo-lean --json ci-verify --project-dir . | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['status']=='ci_verified' and d['zero_sorry'] and d['zero_native_decide'] and d['theorem_shards']>=62, d; print(f'ci-verify: {d[\"status\"]} ({d[\"theorem_shards\"]} theorem shards)')"
-          turbo-lean --json audit-spec LeanSpecs/Core.lean LeanSpecs/Composition.lean LeanSpecs/MetaSpec.lean LeanSpecs/Subspec.lean LeanSpecs/Examples.lean | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['ok'] and d['vacuous_specs']==0 and d['trivial_specs']==0 and d['tight_specs']>=62 and not d.get('warnings') and not d.get('horizontal_packing_warnings'), d; print(f'LeanSpecs: {d[\"tight_specs\"]}/{d[\"total_specs_audited\"]} non_vacuous_and_tight (0 warnings)')"
+          turbo-lean --json ci-verify --project-dir . | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['status']=='ci_verified' and d['zero_sorry'] and d['zero_native_decide'] and d['theorem_shards']>=76, d; print(f'ci-verify: {d[\"status\"]} ({d[\"theorem_shards\"]} theorem shards)')"
+          turbo-lean --json audit-spec LeanSpecs/Core.lean LeanSpecs/Composition.lean LeanSpecs/MetaSpec.lean LeanSpecs/Subspec.lean LeanSpecs/HashDomain.lean LeanSpecs/Examples.lean | python3 -c "import json,sys; raw=sys.stdin.read(); d=json.loads(raw[raw.index('{'):]); assert d['ok'] and d['vacuous_specs']==0 and d['trivial_specs']==0 and d['tight_specs']>=76 and not d.get('warnings') and not d.get('horizontal_packing_warnings'), d; print(f'LeanSpecs: {d[\"tight_specs\"]}/{d[\"total_specs_audited\"]} non_vacuous_and_tight (0 warnings)')"
           if nm -u .lake/build/bin/lean-specs-test | grep -E 'lean_elab|lean_environment|sqlite|SSL_'; then
             echo "ERROR: Forbidden frontend/SQLite/OpenSSL symbol found in lean-specs-test!" >&2
             exit 1
